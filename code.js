@@ -21,6 +21,7 @@ var currentColor = pegEmpty;
 var okButtonBackground = "#eab208";
 var okButtonGreyBackground = "#e2e2e2";
 var okButtonGreyedOut = true;
+var answer = [];
 
 setup();
 
@@ -39,13 +40,7 @@ function setup() {
   }
   
   // Set the event listener for the OK button.
-  onEvent("ok", "click", function( ) {
-    if (okButtonGreyedOut) {
-      return;
-    }
-    setRow(currentRow + 1);
-    greyOutOkButton(true);
-  });
+  onEvent("ok", "click", onOkClick);
   
   // Set the event listeners for all the color buttons.
   onEvent("white", "click", function () { currentColor = pegWhite; });
@@ -54,8 +49,8 @@ function setup() {
   onEvent("blue", "click", function () { currentColor = pegBlue; });
   onEvent("green", "click", function () { currentColor = pegGreen; });
   onEvent("yellow", "click", function () { currentColor = pegYellow; });
-  
-  
+  onEvent("play_again_button", "click", function () { resetBoard(); });
+
   // Set the event listener for all the slots.
   for(rowIndex = 0; rowIndex < numRows; rowIndex++) {
     for(var slotIndex = 0; slotIndex < 4; slotIndex++) {
@@ -66,6 +61,82 @@ function setup() {
   }
   
   console.log("setup complete");
+}
+
+function onOkClick() {
+  if (okButtonGreyedOut) {
+    return;
+  }
+  if (scoreRow(currentRow)) {
+    winGame();
+  } else if (currentRow + 1 >= numRows) {
+    loseGame();
+  } else {
+    setRow(currentRow + 1);
+    greyOutOkButton(true);
+  }
+}
+
+function winGame() {
+  showElement("game_over_background");
+  showElement("play_again_button");
+  showElement("you_win_text_1");
+  showElement("you_win_text_2");
+  showElement("you_win_image");
+}
+
+function loseGame() {
+  showElement("game_over_background");
+  showElement("play_again_button");
+  showElement("you_lose_text");
+  showElement("you_lose_image");
+}
+
+function scoreRow(rowIndex) {
+  var nextHint = 0;
+  var i, j;
+  var copyAnswer = [];
+  var copyGuess = [];
+  for (i = 0; i < 4; i++) {
+    appendItem(copyAnswer, answer[i]);
+  }
+  for (i = 0; i < 4; i++) {
+    appendItem(copyGuess, getImageURL(slotId(i, rowIndex)));
+  }
+  for (i = 0; i < 4; i++) {
+    if (copyAnswer[i] == copyGuess[i]) {
+      setImageURL(hintId(nextHint, rowIndex), pegRed);
+      nextHint++;
+      copyAnswer[i] = pegEmpty;
+      copyGuess[i] = pegEmpty;
+    }
+  }
+  if (nextHint == 4) {
+    return true;
+  }
+  // Look at each of the answer slots
+  for (i = 0; i < 4; i++) {
+    if (copyAnswer[i] == pegEmpty) {
+      continue;
+    }
+    // Look at each of the guess slots
+    for (j = 0; j < 4; j++) {
+      if (i == j) {
+        continue;
+      }
+      if (copyGuess[j] == pegEmpty) {
+        continue;
+      }
+      if (copyAnswer[i] == copyGuess[j]) {
+        setImageURL(hintId(nextHint, rowIndex), pegWhite);
+        nextHint++;
+        copyAnswer[i] = pegEmpty;
+        copyGuess[j] = pegEmpty;
+        break;
+      }
+    }
+  }
+  return false;
 }
 
 function createSlotClickCallback(slotIndex, rowIndex) {
@@ -132,6 +203,15 @@ function rememberRowLayout() {
 }
 
 function resetBoard() {
+  // Make sure all the game-over stuff is hidden
+  hideElement("game_over_background");
+  hideElement("play_again_button");
+  hideElement("you_win_text_1");
+  hideElement("you_win_text_2");
+  hideElement("you_win_image");
+  hideElement("you_lose_text");
+  hideElement("you_lose_image");
+  
   for (var rowIndex = 0; rowIndex < numRows; rowIndex++) {
     for (var i = 0; i < 4; i++) {
       for (var j = 0; j < elementPrefix.length; j++) {
@@ -141,6 +221,22 @@ function resetBoard() {
   }
   setRow(0);
   greyOutOkButton(true);
+  pickAnswer();
+}
+
+function pickAnswer() {
+  answer = [];
+  var allPegs = [pegRed, pegBlue, pegGreen, pegYellow, pegWhite, pegBlack];
+  var peg, i;
+  for (i = 0; i < 4; i++) {
+    peg = randomNumber(0, allPegs.length - 1);
+    appendItem(answer, allPegs[peg]);
+    removeItem(allPegs, peg);
+  }
+  console.log("the answer is");
+  for (i = 0; i < 4; i++) {
+    console.log(answer[i]);
+  }
 }
 
 function greyOutOkButton(value) {
